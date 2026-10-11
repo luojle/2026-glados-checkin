@@ -58,3 +58,38 @@ jobs:
           EXCHANGE_PLAN: ${{ vars.EXCHANGE_PLAN || 'plan500' }}
           CHECKIN_MAX_ATTEMPTS: '3'
           CHECKIN_RETRY_DELAY_SECONDS: '60'
+
+      - name: Notify failure via WxPusher
+        if: ${{ failure() }}
+        continue-on-error: true
+        env:
+          WXPUSHER_SPT: ${{ secrets.WXPUSHER_SPT }}
+        run: |
+          python - <<'PY'
+          import os
+          import requests
+
+          spt = os.environ.get("WXPUSHER_SPT", "")
+          if not spt:
+              print("WxPusher SPT not configured")
+              raise SystemExit(0)
+
+          payload = {
+              "spt": spt,
+              "content": "GLaDOS 自动签到任务执行失败，请打开 GitHub Actions 检查日志。",
+              "summary": "GLaDOS 签到失败",
+              "contentType": 1,
+              "url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          }
+
+          response = requests.post(
+              "https://wxpusher.zjiecode.com/api/send/message/simple-push",
+              json=payload,
+              timeout=15
+          )
+          response.raise_for_status()
+          result = response.json()
+          print("WxPusher response:", result.get("code"), result.get("msg", ""))
+          if result.get("code") != 1000:
+              raise RuntimeError("WxPusher rejected notification")
+          PY
