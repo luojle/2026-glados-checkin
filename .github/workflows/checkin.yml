@@ -60,7 +60,7 @@ jobs:
           CHECKIN_RETRY_DELAY_SECONDS: '60'
 
       - name: Notify failure via WxPusher
-        if: ${{ failure() }}
+        if: ${{ always() }}
         continue-on-error: true
         env:
           WXPUSHER_SPT: ${{ secrets.WXPUSHER_SPT }}
